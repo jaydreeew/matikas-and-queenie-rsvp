@@ -21,9 +21,15 @@
         const { useState } = React;
 
         // ========================================
-        // GUEST DATA - REPLACE WITH YOUR 50 GROUPS
+        // COUPLE'S PHOTO - Add your photo URL here
         // ========================================
-        // GUEST DATA - Copy this and replace the GUEST_DATA section in index.html
+        // Upload your photo to GitHub repository, then use: 'couple-photo.jpg'
+        // Or use an external URL: 'https://example.com/photo.jpg'
+        const COUPLE_PHOTO_URL = 'couple-photo.jpg'; // CHANGE THIS
+
+        // ========================================
+        // GUEST DATA - REPLACE WITH YOUR 40 GROUPS
+        // ========================================
         const GUEST_DATA = {
             'ND/C4WB6': {
                 groupId: 'delilah-group',
@@ -325,16 +331,16 @@
                             setIsEditing(true);
                         } else {
                             const initialGuests = [
-                                { name: data.primaryGuest, attending: null, isPrimary: true }
+                                { name: data.primaryGuest, attending: null, attendanceType: 'both', isPrimary: true }
                             ];
                             
                             data.additionalGuests.forEach(name => {
-                                initialGuests.push({ name, attending: null, isPrimary: false });
+                                initialGuests.push({ name, attending: null, attendanceType: 'both', isPrimary: false });
                             });
                             
                             const blanksNeeded = data.maxGuests - initialGuests.length;
                             for (let i = 0; i < blanksNeeded; i++) {
-                                initialGuests.push({ name: '', attending: null, isPrimary: false });
+                                initialGuests.push({ name: '', attending: null, attendanceType: 'both', isPrimary: false });
                             }
                             
                             setGuests(initialGuests);
@@ -342,16 +348,16 @@
                         }
                     } catch (err) {
                         const initialGuests = [
-                            { name: data.primaryGuest, attending: null, isPrimary: true }
+                            { name: data.primaryGuest, attending: null, attendanceType: 'both', isPrimary: true }
                         ];
                         
                         data.additionalGuests.forEach(name => {
-                            initialGuests.push({ name, attending: null, isPrimary: false });
+                            initialGuests.push({ name, attending: null, attendanceType: 'both', isPrimary: false });
                         });
                         
                         const blanksNeeded = data.maxGuests - initialGuests.length;
                         for (let i = 0; i < blanksNeeded; i++) {
-                            initialGuests.push({ name: '', attending: null, isPrimary: false });
+                            initialGuests.push({ name: '', attending: null, attendanceType: 'both', isPrimary: false });
                         }
                         
                         setGuests(initialGuests);
@@ -374,6 +380,12 @@
             const updateAttendance = (index, attending) => {
                 const updated = [...guests];
                 updated[index].attending = attending;
+                setGuests(updated);
+            };
+
+            const updateAttendanceType = (index, type) => {
+                const updated = [...guests];
+                updated[index].attendanceType = type;
                 setGuests(updated);
             };
 
@@ -467,7 +479,22 @@
                     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 flex items-center justify-center p-4">
                         <div className="max-w-md w-full bg-white rounded-lg shadow-2xl p-8">
                             <div className="text-center mb-8">
-                                <Heart className="w-12 h-12 text-amber-600 mx-auto mb-4" />
+                                {/* Couple's Photo */}
+                                <div className="mb-6">
+                                    <img 
+                                        src={COUPLE_PHOTO_URL} 
+                                        alt="Couple" 
+                                        className="w-48 h-48 object-cover rounded-full mx-auto shadow-lg border-4 border-amber-200"
+                                        onError={(e) => {
+                                            e.target.style.display = 'none';
+                                            e.target.nextSibling.style.display = 'flex';
+                                        }}
+                                    />
+                                    <div className="w-48 h-48 bg-amber-100 rounded-full mx-auto shadow-lg border-4 border-amber-200 hidden items-center justify-center">
+                                        <Heart className="w-16 h-16 text-amber-600" />
+                                    </div>
+                                </div>
+                                
                                 <h1 className="text-4xl font-serif text-amber-900 mb-2">You're Invited</h1>
                                 <p className="text-amber-700">Please enter your invitation code to RSVP</p>
                             </div>
@@ -543,35 +570,53 @@
                                         </div>
                                         
                                         {guest.name.trim() && (
-                                            <div>
-                                                <label className="block text-amber-800 mb-2 font-medium">
-                                                    Will you be attending?
-                                                </label>
-                                                <div className="flex gap-3">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => updateAttendance(index, true)}
-                                                        className={`flex-1 py-3 rounded-lg font-semibold transition ${
-                                                            guest.attending === true
-                                                                ? 'bg-green-600 text-white shadow-lg'
-                                                                : 'bg-white border-2 border-amber-300 text-amber-800 hover:border-green-500'
-                                                        }`}
-                                                    >
-                                                        Joyfully Accept
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => updateAttendance(index, false)}
-                                                        className={`flex-1 py-3 rounded-lg font-semibold transition ${
-                                                            guest.attending === false
-                                                                ? 'bg-gray-600 text-white shadow-lg'
-                                                                : 'bg-white border-2 border-amber-300 text-amber-800 hover:border-gray-500'
-                                                        }`}
-                                                    >
-                                                        Regretfully Decline
-                                                    </button>
+                                            <>
+                                                <div className="mb-4">
+                                                    <label className="block text-amber-800 mb-2 font-medium">
+                                                        Will you be attending?
+                                                    </label>
+                                                    <div className="flex gap-3">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateAttendance(index, true)}
+                                                            className={`flex-1 py-3 rounded-lg font-semibold transition ${
+                                                                guest.attending === true
+                                                                    ? 'bg-green-600 text-white shadow-lg'
+                                                                    : 'bg-white border-2 border-amber-300 text-amber-800 hover:border-green-500'
+                                                            }`}
+                                                        >
+                                                            Joyfully Accept
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateAttendance(index, false)}
+                                                            className={`flex-1 py-3 rounded-lg font-semibold transition ${
+                                                                guest.attending === false
+                                                                    ? 'bg-gray-600 text-white shadow-lg'
+                                                                    : 'bg-white border-2 border-amber-300 text-amber-800 hover:border-gray-500'
+                                                            }`}
+                                                        >
+                                                            Regretfully Decline
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            </div>
+
+                                                {guest.attending === true && (
+                                                    <div>
+                                                        <label className="block text-amber-800 mb-2 font-medium">
+                                                            Which event(s) will you attend?
+                                                        </label>
+                                                        <select
+                                                            value={guest.attendanceType}
+                                                            onChange={(e) => updateAttendanceType(index, e.target.value)}
+                                                            className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:outline-none focus:border-amber-500 bg-white text-amber-900"
+                                                        >
+                                                            <option value="both">Wedding & Reception</option>
+                                                            <option value="reception">Reception Only</option>
+                                                        </select>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 ))}
