@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding RSVP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
+        .font-serif { font-family: 'Playfair Display', serif; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // ========================================
+        // GUEST DATA - REPLACE WITH YOUR 50 GROUPS
+        // ========================================
+        const GUEST_DATA = {
+            'SMITH2025': {
+                groupId: 'smith-family',
+                primaryGuest: 'John Smith',
+                additionalGuests: ['Jane Smith'],
+                maxGuests: 2
+            },
+            'DEMO123': {
+                groupId: 'demo-group',
+                primaryGuest: 'Sarah Johnson',
+                additionalGuests: [],
+                maxGuests: 2
+            }
+            // Add your remaining 48 password-group mappings here
+            // Format:
+            // 'PASSWORD': {
+            //     groupId: 'unique-id',
+            //     primaryGuest: 'First Last',
+            //     additionalGuests: ['Partner Name'], // or []
+            //     maxGuests: 2
+            // },
+        };
+
+        // Simple storage implementation
+        window.storage = {
+            async get(key, shared = false) {
+                const storageKey = shared ? `shared_${key}` : key;
+                const data = localStorage.getItem(storageKey);
+                return data ? { key, value: data, shared } : null;
+            },
+            async set(key, value, shared = false) {
+                const storageKey = shared ? `shared_${key}` : key;
+                localStorage.setItem(storageKey, value);
+                return { key, value, shared };
+            },
+            async list(prefix, shared = false) {
+                const keys = [];
+                const storagePrefix = shared ? `shared_${prefix}` : prefix;
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key.startsWith(storagePrefix)) {
+                        keys.push(key);
+                    }
+                }
+                return { keys, prefix, shared };
+            }
+        };
+
+        // Heart icon component
+        const Heart = ({ className }) => (
+            <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+        );
+
+        function WeddingRSVP() {
+            const [stage, setStage] = useState('password');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const [guestGroup, setGuestGroup] = useState(null);
+            const [guests, setGuests] = useState([]);
+            const [submitted, setSubmitted] = useState(false);
+            const [loading, setLoading] = useState(false);
+            const [isEditing, setIsEditing] = useState(false);
+
+            const handlePasswordSubmit = async () => {
+                const upperPassword = password.toUpperCase().trim();
+                
+                if (GUEST_DATA[upperPassword]) {
+                    const data = GUEST_DATA[upperPassword];
+                    setGuestGroup(data);
+                    
+                    try {
+                        const existing = await window.storage.get(`rsvp:${data.groupId}`, true);
+                        
+                        if (existing) {
+                            const existingData = JSON.parse(existing.value);
+                            setGuests(existingData.guests);
+                            setIsEditing(true);
+                        } else {
+                            const initialGuests = [
+                                { name: data.primaryGuest, attending: null, isPrimary: true }
+                            ];
+                            
+                            data.additionalGuests.forEach(name => {
+                                initialGuests.push({ name, attending: null, isPrimary: false });
+                            });
+                            
+                            const blanksNeeded = data.maxGuests - initialGuests.length;
+                            for (let i = 0; i < blanksNeeded; i++) {
+                                initialGuests.push({ name: '', attending: null, isPrimary: false });
+                            }
+                            
+                            setGuests(initialGuests);
+                            setIsEditing(false);
+                        }
+                    } catch (err) {
+                        const initialGuests = [
+                            { name: data.primaryGuest, attending: null, isPrimary: true }
+                        ];
+                        
+                        data.additionalGuests.forEach(name => {
+                            initialGuests.push({ name, attending: null, isPrimary: false });
+                        });
+                        
+                        const blanksNeeded = data.maxGuests - initialGuests.length;
+                        for (let i = 0; i < blanksNeeded; i++) {
+                            initialGuests.push({ name: '', attending: null, isPrimary: false });
+                        }
+                        
+                        setGuests(initialGuests);
+                        setIsEditing(false);
+                    }
+                    
+                    setStage('rsvp');
+                    setError('');
+                } else {
+                    setError('Invalid password. Please check your invitation.');
+                }
+            };
+
+            const updateGuestName = (index, name) => {
+                const updated = [...guests];
+                updated[index].name = name;
+                setGuests(updated);
+            };
+
+            const updateAttendance = (index, attending) => {
+                const updated = [...guests];
+                updated[index].attending = attending;
+                setGuests(updated);
+            };
+
+            const handleSubmit = async () => {
+                const filledGuests = guests.filter(g => g.name.trim() !== '');
+                const allAnswered = filledGuests.every(g => g.attending !== null);
+                
+                if (!allAnswered) {
+                    setError('Please confirm attendance for all guests listed.');
+                    return;
+                }
+
+                if (filledGuests.length === 0) {
+                    setError('Please add at least one guest name.');
+                    return;
+                }
+
+                setLoading(true);
+                
+                try {
+                    const rsvpData = {
+                        groupId: guestGroup.groupId,
+                        password: password.toUpperCase(),
+                        guests: filledGuests,
+                        submittedAt: new Date().toISOString()
+                    };
+
+                    await window.storage.set(
+                        `rsvp:${guestGroup.groupId}`,
+                        JSON.stringify(rsvpData),
+                        true
+                    );
+
+                    setSubmitted(true);
+                    setError('');
+                } catch (err) {
+                    setError('There was an error submitting your RSVP. Please try again.');
+                    console.error(err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            if (submitted) {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 flex items-center justify-center p-4">
+                        <div className="max-w-md w-full bg-white rounded-lg shadow-2xl p-8 text-center">
+                            <div className="mb-6 flex justify-center">
+                                <Heart className="w-16 h-16 text-amber-600" />
+                            </div>
+                            <h2 className="text-3xl font-serif text-amber-900 mb-4">
+                                {isEditing ? 'RSVP Updated!' : 'Thank You!'}
+                            </h2>
+                            <p className="text-amber-800 mb-6">
+                                {isEditing 
+                                    ? 'Your RSVP has been successfully updated.'
+                                    : 'Your RSVP has been received. We can\'t wait to celebrate with you!'
+                                }
+                            </p>
+                            <div className="space-y-3">
+                                <button
+                                    onClick={() => {
+                                        setStage('password');
+                                        setPassword('');
+                                        setSubmitted(false);
+                                        setGuests([]);
+                                        setGuestGroup(null);
+                                        setIsEditing(false);
+                                    }}
+                                    className="w-full bg-amber-600 hover:bg-amber-700 text-white py-3 rounded-lg transition"
+                                >
+                                    Submit Another RSVP
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setSubmitted(false);
+                                        setStage('rsvp');
+                                    }}
+                                    className="w-full border-2 border-amber-600 text-amber-600 hover:bg-amber-50 py-3 rounded-lg transition"
+                                >
+                                    Edit This RSVP
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (stage === 'password') {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 flex items-center justify-center p-4">
+                        <div className="max-w-md w-full bg-white rounded-lg shadow-2xl p-8">
+                            <div className="text-center mb-8">
+                                <Heart className="w-12 h-12 text-amber-600 mx-auto mb-4" />
+                                <h1 className="text-4xl font-serif text-amber-900 mb-2">You're Invited</h1>
+                                <p className="text-amber-700">Please enter your invitation code to RSVP</p>
+                            </div>
+                            
+                            <div>
+                                <div className="mb-6">
+                                    <label className="block text-amber-800 mb-2 font-medium">
+                                        Invitation Code
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+                                        className="w-full px-4 py-3 border-2 border-amber-200 rounded-lg focus:outline-none focus:border-amber-400 text-center text-lg tracking-wider uppercase"
+                                        placeholder="Enter code"
+                                    />
+                                </div>
+                                
+                                {error && (
+                                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                                        {error}
+                                    </div>
+                                )}
+                                
+                                <button
+                                    onClick={handlePasswordSubmit}
+                                    className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 rounded-lg transition duration-200 shadow-lg"
+                                >
+                                    Continue
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 flex items-center justify-center p-4">
+                    <div className="max-w-2xl w-full bg-white rounded-lg shadow-2xl p-8">
+                        <div className="text-center mb-8">
+                            <Heart className="w-12 h-12 text-amber-600 mx-auto mb-4" />
+                            <h1 className="text-4xl font-serif text-amber-900 mb-2">RSVP</h1>
+                            <p className="text-amber-700">
+                                {isEditing 
+                                    ? 'Update your RSVP details below'
+                                    : 'We\'re excited to celebrate with you!'
+                                }
+                            </p>
+                            {isEditing && (
+                                <div className="mt-3 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm inline-block">
+                                    You're editing an existing RSVP
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <div className="space-y-6 mb-8">
+                                {guests.map((guest, index) => (
+                                    <div key={index} className="border-2 border-amber-200 rounded-lg p-6 bg-amber-50/50">
+                                        <div className="mb-4">
+                                            <label className="block text-amber-800 mb-2 font-medium">
+                                                {guest.isPrimary ? 'Primary Guest' : `Guest ${index + 1}`}
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={guest.name}
+                                                onChange={(e) => updateGuestName(index, e.target.value)}
+                                                className="w-full px-4 py-2 border border-amber-300 rounded-lg focus:outline-none focus:border-amber-500"
+                                                placeholder="Guest name"
+                                                disabled={guest.isPrimary}
+                                            />
+                                        </div>
+                                        
+                                        {guest.name.trim() && (
+                                            <div>
+                                                <label className="block text-amber-800 mb-2 font-medium">
+                                                    Will you be attending?
+                                                </label>
+                                                <div className="flex gap-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateAttendance(index, true)}
+                                                        className={`flex-1 py-3 rounded-lg font-semibold transition ${
+                                                            guest.attending === true
+                                                                ? 'bg-green-600 text-white shadow-lg'
+                                                                : 'bg-white border-2 border-amber-300 text-amber-800 hover:border-green-500'
+                                                        }`}
+                                                    >
+                                                        Joyfully Accept
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateAttendance(index, false)}
+                                                        className={`flex-1 py-3 rounded-lg font-semibold transition ${
+                                                            guest.attending === false
+                                                                ? 'bg-gray-600 text-white shadow-lg'
+                                                                : 'bg-white border-2 border-amber-300 text-amber-800 hover:border-gray-500'
+                                                        }`}
+                                                    >
+                                                        Regretfully Decline
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {error && (
+                                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                                    {error}
+                                </div>
+                            )}
+
+                            <button
+                                onClick={handleSubmit}
+                                disabled={loading}
+                                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-4 rounded-lg transition duration-200 shadow-lg disabled:opacity-50"
+                            >
+                                {loading ? 'Submitting...' : isEditing ? 'Update RSVP' : 'Submit RSVP'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<WeddingRSVP />, document.getElementById('root'));
+    </script>
+</body>
+</html>
