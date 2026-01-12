@@ -558,6 +558,8 @@
                         true
                     );
 
+                    sendToGoogleSheets(rsvpData);
+
                     setSubmitted(true);
                     setError('');
                     await calculateWeddingSlots();
