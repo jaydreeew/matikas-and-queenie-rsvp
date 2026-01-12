@@ -766,7 +766,7 @@
                             <div className="mt-4 px-4 py-3 bg-amber-50 border-2 border-amber-300 rounded-lg inline-block">
                                 <div className="text-sm text-amber-700 font-medium mb-1">Wedding Ceremony Slots</div>
                                 <div className="text-2xl font-bold text-amber-900">
-                                    {availableWeddingSlots} / {TOTAL_WEDDING_SLOTS - PRE_ALLOCATED_ATTENDEES.length}
+                                   {weddingSlotsFilled} / {TOTAL_WEDDING_SLOTS}
                                 </div>
                                 <div className="text-xs text-amber-600">Available slots remaining</div>
                             </div>
@@ -858,7 +858,8 @@
                                                                 </select>
                                                                 {guest.attendanceType === 'both' && availableWeddingSlots <= 5 && (
                                                                     <p className="text-sm text-orange-600 mt-2">
-                                                                        ⚠️ Only {availableWeddingSlots} ceremony slot{availableWeddingSlots !== 1 ? 's' : ''} remaining
+                                                                        <p className="text-sm text-orange-600 mt-2">
+                                                                        ⚠️ Only {availableWeddingSlots} ceremony slot{availableWeddingSlots !== 1 ? 's' : ''} remaining out of {TOTAL_WEDDING_SLOTS}
                                                                     </p>
                                                                 )}
                                                             </div>
