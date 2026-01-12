@@ -18,23 +18,50 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 
     <script type="text/babel">
-        const { useState } = React;
+        const { useState, useEffect } = React;
 
         // ========================================
         // COUPLE'S PHOTO - Add your photo URL here
         // ========================================
-        // Upload your photo to GitHub repository, then use: 'couple-photo.jpg'
-        // Or use an external URL: 'https://example.com/photo.jpg'
-        const COUPLE_PHOTO_URL = 'couple-photo.jpg'; // CHANGE THIS
+        const COUPLE_PHOTO_URL = 'couple-photo.jpg';
 
         // ========================================
-        // GUEST DATA - REPLACE WITH YOUR 40 GROUPS
+        // WEDDING & RECEPTION SLOTS
+        // ========================================
+        const TOTAL_WEDDING_SLOTS = 40;
+        
+        // Pre-allocated attendees (automatically attending wedding & reception)
+        const PRE_ALLOCATED_ATTENDEES = [
+            { name: 'Delilah Malabanan', groupId: 'delilah-group' },
+            { name: 'John Drew Malabanan', groupId: 'delilah-group' },
+            { name: 'Fe Zamora', groupId: 'fe-group' },
+            { name: 'Donato dela Luna', groupId: 'donato-group' },
+            { name: 'Evelyn dela Luna', groupId: 'donato-group' },
+            { name: 'Joshua Malabanan', groupId: 'joshua-group' },
+            { name: 'Genel Malabanan', groupId: 'joshua-group' },
+            { name: 'Roderick Malabanan', groupId: 'roderick-group' },
+            { name: 'Ana Santos', groupId: 'ana-group' },
+            { name: 'Mike Schultz', groupId: 'hannah-group' },
+            { name: 'Hannah Olib-Schultz', groupId: 'hannah-group' },
+            { name: 'Raul Mendejar', groupId: 'hannah2-group' },
+            { name: 'Hannah Zamora-Mendejar', groupId: 'hannah2-group' },
+            { name: 'Joseph Garibay', groupId: 'joseph-group' },
+            { name: 'Jonathan de Belen', groupId: 'jonathan2-group' },
+            { name: 'Lyra dela Luna', groupId: 'donato-group' },
+            { name: 'Jonathan Roy Perilla', groupId: 'jonathan-group' },
+            { name: 'Fatima dela Luna', groupId: 'dennis-group' },
+            { name: 'Zany Jay Perilla', groupId: 'zany-group' },
+            { name: 'Julia Arabela Malabanan', groupId: 'joshua-group' }
+        ];
+
+        // ========================================
+        // GUEST DATA
         // ========================================
         const GUEST_DATA = {
             'ND/C4WB6': {
                 groupId: 'delilah-group',
                 primaryGuest: 'Delilah Malabanan',
-                additionalGuests: [],
+                additionalGuests: ['John Drew Malabanan'],
                 maxGuests: 2
             },
             'UZH9%V9A': {
@@ -52,7 +79,7 @@
             'ZD8]/K-M': {
                 groupId: 'joshua-group',
                 primaryGuest: 'Joshua Malabanan',
-                additionalGuests: [],
+                additionalGuests: ['Genel Malabanan', 'Julia Arabela Malabanan'],
                 maxGuests: 5
             },
             '=Z6WVP.M': {
@@ -75,8 +102,8 @@
             },
             '{YMEB2F]': {
                 groupId: 'donato-group',
-                primaryGuest: 'Donato Dela Luna',
-                additionalGuests: [],
+                primaryGuest: 'Donato dela Luna',
+                additionalGuests: ['Evelyn dela Luna', 'Lyra dela Luna'],
                 maxGuests: 5
             },
             'Q45ZV!-)': {
@@ -88,7 +115,7 @@
             'DXKR28=?': {
                 groupId: 'dennis-group',
                 primaryGuest: 'Dennis Dela Luna',
-                additionalGuests: [],
+                additionalGuests: ['Fatima dela Luna'],
                 maxGuests: 3
             },
             'XC{R7AWQ': {
@@ -213,7 +240,7 @@
             },
             ']G9Z}>=H': {
                 groupId: 'jonathan2-group',
-                primaryGuest: 'Jonathan De Belen',
+                primaryGuest: 'Jonathan de Belen',
                 additionalGuests: [],
                 maxGuests: 2
             },
@@ -244,13 +271,13 @@
             '[W=NP-9B': {
                 groupId: 'hannah-group',
                 primaryGuest: 'Hannah Olib-Schultz',
-                additionalGuests: [],
+                additionalGuests: ['Mike Schultz'],
                 maxGuests: 2
             },
             'EQ^M-4Q2': {
                 groupId: 'hannah2-group',
                 primaryGuest: 'Hannah Zamora-Mendejar',
-                additionalGuests: [],
+                additionalGuests: ['Raul Mendejar'],
                 maxGuests: 2
             },
             'GXU6$=8U': {
@@ -273,7 +300,14 @@
             }
         };
 
-        // Simple storage implementation
+        // Helper function to check if guest is pre-allocated
+        const isPreAllocated = (guestName, groupId) => {
+            return PRE_ALLOCATED_ATTENDEES.some(
+                attendee => attendee.name === guestName && attendee.groupId === groupId
+            );
+        };
+
+        // Storage implementation
         window.storage = {
             async get(key, shared = false) {
                 const storageKey = shared ? `shared_${key}` : key;
@@ -298,9 +332,8 @@
             }
         };
 
-        // Heart icon component
         const Heart = ({ className }) => (
-            <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg className={className} fill="currentColor" viewBox="0 0 24 24">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
         );
@@ -314,6 +347,37 @@
             const [submitted, setSubmitted] = useState(false);
             const [loading, setLoading] = useState(false);
             const [isEditing, setIsEditing] = useState(false);
+            const [weddingSlotsFilled, setWeddingSlotsFilled] = useState(20); // Pre-allocated
+
+            useEffect(() => {
+                calculateWeddingSlots();
+            }, []);
+
+            const calculateWeddingSlots = async () => {
+                try {
+                    const result = await window.storage.list('rsvp:', true);
+                    let slotsUsed = PRE_ALLOCATED_ATTENDEES.length; // Start with 20
+                    
+                    if (result && result.keys) {
+                        for (const key of result.keys) {
+                            const data = await window.storage.get(key, true);
+                            if (data) {
+                                const rsvp = JSON.parse(data.value);
+                                rsvp.guests.forEach(guest => {
+                                    if (guest.attending === true && 
+                                        guest.attendanceType === 'both' && 
+                                        !isPreAllocated(guest.name, rsvp.groupId)) {
+                                        slotsUsed++;
+                                    }
+                                });
+                            }
+                        }
+                    }
+                    setWeddingSlotsFilled(slotsUsed);
+                } catch (err) {
+                    console.error('Error calculating slots:', err);
+                }
+            };
 
             const handlePasswordSubmit = async () => {
                 const upperPassword = password.toUpperCase().trim();
@@ -330,34 +394,77 @@
                             setGuests(existingData.guests);
                             setIsEditing(true);
                         } else {
-                            const initialGuests = [
-                                { name: data.primaryGuest, attending: null, attendanceType: 'both', isPrimary: true }
-                            ];
+                            const initialGuests = [];
                             
-                            data.additionalGuests.forEach(name => {
-                                initialGuests.push({ name, attending: null, attendanceType: 'both', isPrimary: false });
+                            // Add primary guest
+                            const isPrimaryPreAllocated = isPreAllocated(data.primaryGuest, data.groupId);
+                            initialGuests.push({
+                                name: data.primaryGuest,
+                                attending: isPrimaryPreAllocated ? true : null,
+                                attendanceType: isPrimaryPreAllocated ? 'both' : 'both',
+                                isPrimary: true,
+                                isPreAllocated: isPrimaryPreAllocated
                             });
                             
+                            // Add additional pre-filled guests
+                            data.additionalGuests.forEach(name => {
+                                const isThisPreAllocated = isPreAllocated(name, data.groupId);
+                                initialGuests.push({
+                                    name,
+                                    attending: isThisPreAllocated ? true : null,
+                                    attendanceType: isThisPreAllocated ? 'both' : 'both',
+                                    isPrimary: false,
+                                    isPreAllocated: isThisPreAllocated
+                                });
+                            });
+                            
+                            // Add blank slots
                             const blanksNeeded = data.maxGuests - initialGuests.length;
                             for (let i = 0; i < blanksNeeded; i++) {
-                                initialGuests.push({ name: '', attending: null, attendanceType: 'both', isPrimary: false });
+                                initialGuests.push({
+                                    name: '',
+                                    attending: null,
+                                    attendanceType: 'both',
+                                    isPrimary: false,
+                                    isPreAllocated: false
+                                });
                             }
                             
                             setGuests(initialGuests);
                             setIsEditing(false);
                         }
                     } catch (err) {
-                        const initialGuests = [
-                            { name: data.primaryGuest, attending: null, attendanceType: 'both', isPrimary: true }
-                        ];
+                        const initialGuests = [];
+                        
+                        const isPrimaryPreAllocated = isPreAllocated(data.primaryGuest, data.groupId);
+                        initialGuests.push({
+                            name: data.primaryGuest,
+                            attending: isPrimaryPreAllocated ? true : null,
+                            attendanceType: isPrimaryPreAllocated ? 'both' : 'both',
+                            isPrimary: true,
+                            isPreAllocated: isPrimaryPreAllocated
+                        });
                         
                         data.additionalGuests.forEach(name => {
-                            initialGuests.push({ name, attending: null, attendanceType: 'both', isPrimary: false });
+                            const isThisPreAllocated = isPreAllocated(name, data.groupId);
+                            initialGuests.push({
+                                name,
+                                attending: isThisPreAllocated ? true : null,
+                                attendanceType: isThisPreAllocated ? 'both' : 'both',
+                                isPrimary: false,
+                                isPreAllocated: isThisPreAllocated
+                            });
                         });
                         
                         const blanksNeeded = data.maxGuests - initialGuests.length;
                         for (let i = 0; i < blanksNeeded; i++) {
-                            initialGuests.push({ name: '', attending: null, attendanceType: 'both', isPrimary: false });
+                            initialGuests.push({
+                                name: '',
+                                attending: null,
+                                attendanceType: 'both',
+                                isPrimary: false,
+                                isPreAllocated: false
+                            });
                         }
                         
                         setGuests(initialGuests);
@@ -366,6 +473,7 @@
                     
                     setStage('rsvp');
                     setError('');
+                    await calculateWeddingSlots();
                 } else {
                     setError('Invalid password. Please check your invitation.');
                 }
@@ -403,6 +511,34 @@
                     return;
                 }
 
+                // Check wedding slots
+                const newWeddingAttendees = filledGuests.filter(
+                    g => g.attending === true && g.attendanceType === 'both' && !g.isPreAllocated
+                );
+                
+                // Calculate current slots excluding this group's previous RSVP
+                let currentSlots = weddingSlotsFilled;
+                if (isEditing) {
+                    try {
+                        const existing = await window.storage.get(`rsvp:${guestGroup.groupId}`, true);
+                        if (existing) {
+                            const existingData = JSON.parse(existing.value);
+                            const previousWeddingAttendees = existingData.guests.filter(
+                                g => g.attending === true && g.attendanceType === 'both' && !g.isPreAllocated
+                            ).length;
+                            currentSlots -= previousWeddingAttendees;
+                        }
+                    } catch (err) {
+                        // Continue
+                    }
+                }
+                
+                if (currentSlots + newWeddingAttendees.length > TOTAL_WEDDING_SLOTS) {
+                    const available = TOTAL_WEDDING_SLOTS - currentSlots;
+                    setError(`Only ${available} wedding ceremony slot(s) remaining. Please select "Reception Only" for some guests.`);
+                    return;
+                }
+
                 setLoading(true);
                 
                 try {
@@ -421,6 +557,7 @@
 
                     setSubmitted(true);
                     setError('');
+                    await calculateWeddingSlots();
                 } catch (err) {
                     setError('There was an error submitting your RSVP. Please try again.');
                     console.error(err);
@@ -428,6 +565,8 @@
                     setLoading(false);
                 }
             };
+
+            const availableWeddingSlots = TOTAL_WEDDING_SLOTS - weddingSlotsFilled;
 
             if (submitted) {
                 return (
@@ -479,7 +618,6 @@
                     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 flex items-center justify-center p-4">
                         <div className="max-w-md w-full bg-white rounded-lg shadow-2xl p-8">
                             <div className="text-center mb-8">
-                                {/* Couple's Photo */}
                                 <div className="mb-6">
                                     <img 
                                         src={COUPLE_PHOTO_URL} 
@@ -533,7 +671,7 @@
             }
 
             return (
-                <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 flex items-center justify-center p-4">
+                <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 flex items-center justify-center p-4 py-8">
                     <div className="max-w-2xl w-full bg-white rounded-lg shadow-2xl p-8">
                         <div className="text-center mb-8">
                             <Heart className="w-12 h-12 text-amber-600 mx-auto mb-4" />
@@ -549,6 +687,15 @@
                                     You're editing an existing RSVP
                                 </div>
                             )}
+                            
+                            {/* Wedding Slots Counter */}
+                            <div className="mt-4 px-4 py-3 bg-amber-50 border-2 border-amber-300 rounded-lg inline-block">
+                                <div className="text-sm text-amber-700 font-medium mb-1">Wedding Ceremony Slots</div>
+                                <div className="text-2xl font-bold text-amber-900">
+                                    {availableWeddingSlots} / {TOTAL_WEDDING_SLOTS - PRE_ALLOCATED_ATTENDEES.length}
+                                </div>
+                                <div className="text-xs text-amber-600">Available slots remaining</div>
+                            </div>
                         </div>
 
                         <div>
@@ -558,6 +705,11 @@
                                         <div className="mb-4">
                                             <label className="block text-amber-800 mb-2 font-medium">
                                                 {guest.isPrimary ? 'Primary Guest' : `Guest ${index + 1}`}
+                                                {guest.isPreAllocated && (
+                                                    <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                                                        Reserved Wedding Spot
+                                                    </span>
+                                                )}
                                             </label>
                                             <input
                                                 type="text"
@@ -565,56 +717,79 @@
                                                 onChange={(e) => updateGuestName(index, e.target.value)}
                                                 className="w-full px-4 py-2 border border-amber-300 rounded-lg focus:outline-none focus:border-amber-500"
                                                 placeholder="Guest name"
-                                                disabled={guest.isPrimary}
+                                                disabled={guest.isPrimary || guest.isPreAllocated}
                                             />
                                         </div>
                                         
                                         {guest.name.trim() && (
                                             <>
-                                                <div className="mb-4">
-                                                    <label className="block text-amber-800 mb-2 font-medium">
-                                                        Will you be attending?
-                                                    </label>
-                                                    <div className="flex gap-3">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => updateAttendance(index, true)}
-                                                            className={`flex-1 py-3 rounded-lg font-semibold transition ${
-                                                                guest.attending === true
-                                                                    ? 'bg-green-600 text-white shadow-lg'
-                                                                    : 'bg-white border-2 border-amber-300 text-amber-800 hover:border-green-500'
-                                                            }`}
-                                                        >
-                                                            Joyfully Accept
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => updateAttendance(index, false)}
-                                                            className={`flex-1 py-3 rounded-lg font-semibold transition ${
-                                                                guest.attending === false
-                                                                    ? 'bg-gray-600 text-white shadow-lg'
-                                                                    : 'bg-white border-2 border-amber-300 text-amber-800 hover:border-gray-500'
-                                                            }`}
-                                                        >
-                                                            Regretfully Decline
-                                                        </button>
+                                                {guest.isPreAllocated ? (
+                                                    <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                                                        <div className="flex items-center gap-2 text-green-800">
+                                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                            </svg>
+                                                            <span className="font-semibold">Confirmed for Wedding & Reception</span>
+                                                        </div>
+                                                        <p className="text-sm text-green-700 mt-2">
+                                                            You have a reserved spot for both the wedding ceremony and reception.
+                                                        </p>
                                                     </div>
-                                                </div>
+                                                ) : (
+                                                    <>
+                                                        <div className="mb-4">
+                                                            <label className="block text-amber-800 mb-2 font-medium">
+                                                                Will you be attending?
+                                                            </label>
+                                                            <div className="flex gap-3">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => updateAttendance(index, true)}
+                                                                    className={`flex-1 py-3 rounded-lg font-semibold transition ${
+                                                                        guest.attending === true
+                                                                            ? 'bg-green-600 text-white shadow-lg'
+                                                                            : 'bg-white border-2 border-amber-300 text-amber-800 hover:border-green-500'
+                                                                    }`}
+                                                                >
+                                                                    Joyfully Accept
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => updateAttendance(index, false)}
+                                                                    className={`flex-1 py-3 rounded-lg font-semibold transition ${
+                                                                        guest.attending === false
+                                                                            ? 'bg-gray-600 text-white shadow-lg'
+                                                                            : 'bg-white border-2 border-amber-300 text-amber-800 hover:border-gray-500'
+                                                                    }`}
+                                                                >
+                                                                    Regretfully Decline
+                                                                </button>
+                                                            </div>
+                                                        </div>
 
-                                                {guest.attending === true && (
-                                                    <div>
-                                                        <label className="block text-amber-800 mb-2 font-medium">
-                                                            Which event(s) will you attend?
-                                                        </label>
-                                                        <select
-                                                            value={guest.attendanceType}
-                                                            onChange={(e) => updateAttendanceType(index, e.target.value)}
-                                                            className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:outline-none focus:border-amber-500 bg-white text-amber-900"
-                                                        >
-                                                            <option value="both">Wedding & Reception</option>
-                                                            <option value="reception">Reception Only</option>
-                                                        </select>
-                                                    </div>
+                                                        {guest.attending === true && (
+                                                            <div>
+                                                                <label className="block text-amber-800 mb-2 font-medium">
+                                                                    Which event(s) will you attend?
+                                                                </label>
+                                                                <select
+                                                                    value={guest.attendanceType}
+                                                                    onChange={(e) => updateAttendanceType(index, e.target.value)}
+                                                                    className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:outline-none focus:border-amber-500 bg-white text-amber-900"
+                                                                >
+                                                                    <option value="both">
+                                                                        Wedding & Reception {availableWeddingSlots === 0 && guest.attendanceType !== 'both' ? '(FULL)' : ''}
+                                                                    </option>
+                                                                    <option value="reception">Reception Only</option>
+                                                                </select>
+                                                                {guest.attendanceType === 'both' && availableWeddingSlots <= 5 && (
+                                                                    <p className="text-sm text-orange-600 mt-2">
+                                                                        ⚠️ Only {availableWeddingSlots} ceremony slot{availableWeddingSlots !== 1 ? 's' : ''} remaining
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </>
                                                 )}
                                             </>
                                         )}
