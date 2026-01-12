@@ -52,9 +52,9 @@
             { name: 'Fatima dela Luna', groupId: 'dennis-group' },
             { name: 'Zany Jay Perilla', groupId: 'zany-group' },
             { name: 'Julia Arabela Malabanan', groupId: 'joshua-group' },
-            { name: 'Naomi Perilla', groupId: 'naomi-group' },
             { name: 'Maria Malabanan', groupId: 'maria-group' },
-            { name: 'Victoria dela Luna', groupId: 'victoria-group' }
+            { name: 'Victoria dela Luna', groupId: 'victoria-group' },
+            { name: 'Naomi Perilla', groupId: 'naomi-group' }
         ];
 
         // ========================================
@@ -101,7 +101,7 @@
                 groupId: 'limuel-group',
                 primaryGuest: 'Limuel Mendoza',
                 additionalGuests: [],
-                maxGuests: 2
+                maxGuests: 1
             },
             '{YMEB2F]': {
                 groupId: 'donato-group',
@@ -350,7 +350,7 @@
             const [submitted, setSubmitted] = useState(false);
             const [loading, setLoading] = useState(false);
             const [isEditing, setIsEditing] = useState(false);
-            const [weddingSlotsFilled, setWeddingSlotsFilled] = useState(23); // Pre-allocated
+            const [weddingSlotsFilled, setWeddingSlotsFilled] = useState(20); // Pre-allocated
 
             useEffect(() => {
                 calculateWeddingSlots();
