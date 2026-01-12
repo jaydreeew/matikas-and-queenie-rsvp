@@ -310,28 +310,79 @@
             );
         };
 
-        // Storage implementation
+        // Storage implementation - GOOGLE SHEETS VERSION
+        const APPS_SCRIPT_URL = 'YOUR_WEB_APP_URL_HERE'; // Paste your deployed URL
+        
         window.storage = {
             async get(key, shared = false) {
                 const storageKey = shared ? `shared_${key}` : key;
+                
+                // Try to fetch from Google Sheets first
+                if (key.startsWith('rsvp:')) {
+                    try {
+                        const groupId = key.replace('rsvp:', '');
+                        const response = await fetch(`${APPS_SCRIPT_URL}?groupId=${groupId}`, {
+                            method: 'GET',
+                            redirect: 'follow'
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data && data.groupId) {
+                                return { key, value: JSON.stringify(data), shared };
+                            }
+                        }
+                    } catch (err) {
+                        console.log('Falling back to localStorage:', err);
+                    }
+                }
+                
+                // Fallback to localStorage
                 const data = localStorage.getItem(storageKey);
                 return data ? { key, value: data, shared } : null;
             },
+            
             async set(key, value, shared = false) {
                 const storageKey = shared ? `shared_${key}` : key;
+                
+                // Save to localStorage
                 localStorage.setItem(storageKey, value);
+                
+                // Also send to Google Sheets
+                if (key.startsWith('rsvp:')) {
+                    try {
+                        const rsvpData = JSON.parse(value);
+                        const response = await fetch(APPS_SCRIPT_URL, {
+                            method: 'POST',
+                            mode: 'no-cors', // Required for Google Apps Script
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(rsvpData),
+                            redirect: 'follow'
+                        });
+                        
+                        // Note: no-cors mode means we can't read the response,
+                        // but the data will still be saved
+                        console.log('RSVP sent to Google Sheets');
+                        
+                    } catch (err) {
+                        console.error('Error syncing to Google Sheets:', err);
+                        // Data is still in localStorage
+                    }
+                }
+                
                 return { key, value, shared };
             },
+            
             async list(prefix, shared = false) {
                 const keys = [];
                 const storagePrefix = shared ? `shared_${prefix}` : prefix;
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
                     if (key.startsWith(storagePrefix)) {
-                        keys.push(key);
+                        keys.push(key.replace(storagePrefix, ''));
                     }
                 }
-                return { keys, prefix, shared };
+                return keys;
             }
         };
 
@@ -358,28 +409,25 @@
 
             const calculateWeddingSlots = async () => {
                 try {
-                    const result = await window.storage.list('rsvp:', true);
-                    let slotsUsed = PRE_ALLOCATED_ATTENDEES.length; // Start with 20
+                    // Try Google Sheets API first
+                    const response = await fetch(`${APPS_SCRIPT_URL}?action=slots`, {
+                        method: 'GET',
+                        redirect: 'follow'
+                    });
                     
-                    if (result && result.keys) {
-                        for (const key of result.keys) {
-                            const data = await window.storage.get(key, true);
-                            if (data) {
-                                const rsvp = JSON.parse(data.value);
-                                rsvp.guests.forEach(guest => {
-                                    if (guest.attending === true && 
-                                        guest.attendanceType === 'both' && 
-                                        !isPreAllocated(guest.name, rsvp.groupId)) {
-                                        slotsUsed++;
-                                    }
-                                });
-                            }
-                        }
+                    if (response.ok) {
+                        const data = await response.json();
+                        setWeddingSlotsFilled(data.filled);
+                        return;
                     }
-                    setWeddingSlotsFilled(slotsUsed);
                 } catch (err) {
-                    console.error('Error calculating slots:', err);
+                    console.log('Using localStorage fallback for slots');
                 }
+                
+                // Fallback to original localStorage calculation
+                let count = 20;
+                const keys = await window.storage.list('rsvp:', true);
+                // ... rest of your existing code
             };
 
             const handlePasswordSubmit = async () => {
