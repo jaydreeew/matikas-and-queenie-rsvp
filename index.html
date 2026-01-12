@@ -562,13 +562,13 @@
                     return;
                 }
 
-               // Check wedding slots
+              // Check wedding slots
                 const newWeddingAttendees = filledGuests.filter(
                     g => g.attending === true && g.attendanceType === 'both' && !g.isPreAllocated
                 );
                 
-                // Calculate current NON-PRE-ALLOCATED slots used (excluding this group's previous RSVP)
-                let currentNonPreAllocatedSlots = weddingSlotsFilled - PRE_ALLOCATED_ATTENDEES.length;
+                // Calculate how many non-pre-allocated slots are currently used
+                let nonPreAllocatedSlotsUsed = Math.max(0, weddingSlotsFilled - PRE_ALLOCATED_ATTENDEES.length);
                 
                 if (isEditing) {
                     try {
@@ -578,27 +578,21 @@
                             const previousWeddingAttendees = existingData.guests.filter(
                                 g => g.attending === true && g.attendanceType === 'both' && !g.isPreAllocated
                             ).length;
-                            currentNonPreAllocatedSlots -= previousWeddingAttendees;
+                            nonPreAllocatedSlotsUsed -= previousWeddingAttendees;
                         }
                     } catch (err) {
                         // Continue
                     }
                 }
-
-                // Check if adding these guests would exceed the 22 available (non-pre-allocated) slots
-                const availableSlots = (TOTAL_WEDDING_SLOTS - PRE_ALLOCATED_ATTENDEES.length);
-                if (currentNonPreAllocatedSlots + newWeddingAttendees.length > availableSlots) {
-                    const remaining = availableSlots - currentNonPreAllocatedSlots;
+                
+                // Check if adding these new guests would exceed the 22 available slots
+                const availableForNewGuests = TOTAL_WEDDING_SLOTS - PRE_ALLOCATED_ATTENDEES.length; // 45 - 23 = 22
+                if (nonPreAllocatedSlotsUsed + newWeddingAttendees.length > availableForNewGuests) {
+                    const remaining = availableForNewGuests - nonPreAllocatedSlotsUsed;
                     setError(`Only ${remaining} wedding ceremony slot(s) remaining for non-reserved guests. Please select "Reception Only" for some guests.`);
                     return;
                 }
                 
-                if (currentSlots + newWeddingAttendees.length > TOTAL_WEDDING_SLOTS) {
-                    const available = TOTAL_WEDDING_SLOTS - currentSlots;
-                    setError(`Only ${available} wedding ceremony slot(s) remaining. Please select "Reception Only" for some guests.`);
-                    return;
-                }
-
                 setLoading(true);
                 
                 try {
