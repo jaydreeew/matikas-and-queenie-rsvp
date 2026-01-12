@@ -52,6 +52,7 @@
             { name: 'Fatima dela Luna', groupId: 'dennis-group' },
             { name: 'Zany Jay Perilla', groupId: 'zany-group' },
             { name: 'Julia Arabela Malabanan', groupId: 'joshua-group' },
+            { name: 'Naomi Perilla', groupId: 'naomi-group' },
             { name: 'Maria Malabanan', groupId: 'maria-group' },
             { name: 'Victoria dela Luna', groupId: 'victoria-group' }
         ];
@@ -100,7 +101,7 @@
                 groupId: 'limuel-group',
                 primaryGuest: 'Limuel Mendoza',
                 additionalGuests: [],
-                maxGuests: 1
+                maxGuests: 2
             },
             '{YMEB2F]': {
                 groupId: 'donato-group',
@@ -112,7 +113,7 @@
                 groupId: 'dolores-group',
                 primaryGuest: 'Dolores Dela Luna',
                 additionalGuests: [],
-                maxGuests: 4
+                maxGuests: 5
             },
             'DXKR28=?': {
                 groupId: 'dennis-group',
@@ -232,19 +233,19 @@
                 groupId: 'zany-group',
                 primaryGuest: 'Zany Jay Perilla',
                 additionalGuests: [],
-                maxGuests: 2
+                maxGuests: 3
             },
             'XZW$X9AR': {
                 groupId: 'joseph-group',
                 primaryGuest: 'Joseph Garibay',
                 additionalGuests: [],
-                maxGuests: 2
+                maxGuests: 3
             },
             ']G9Z}>=H': {
                 groupId: 'jonathan2-group',
                 primaryGuest: 'Jonathan de Belen',
                 additionalGuests: [],
-                maxGuests: 2
+                maxGuests: 1
             },
             '2/RC7J}9': {
                 groupId: 'sara-group',
@@ -280,7 +281,7 @@
                 groupId: 'hannah2-group',
                 primaryGuest: 'Hannah Zamora-Mendejar',
                 additionalGuests: ['Raul Mendejar'],
-                maxGuests: 2
+                maxGuests: 4
             },
             'GXU6$=8U': {
                 groupId: 'ianthe-group',
@@ -349,7 +350,7 @@
             const [submitted, setSubmitted] = useState(false);
             const [loading, setLoading] = useState(false);
             const [isEditing, setIsEditing] = useState(false);
-            const [weddingSlotsFilled, setWeddingSlotsFilled] = useState(20); // Pre-allocated
+            const [weddingSlotsFilled, setWeddingSlotsFilled] = useState(23); // Pre-allocated
 
             useEffect(() => {
                 calculateWeddingSlots();
