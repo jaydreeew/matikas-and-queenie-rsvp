@@ -89,6 +89,11 @@
                 const data = localStorage.getItem(storageKey);
                 return data ? { key, value: data, shared } : null;
             },
+            async set(key, value, shared = false) {
+                const storageKey = shared ? `shared_${key}` : key;
+                localStorage.setItem(storageKey, value);
+                return { key, value, shared };
+            },
             async list(prefix, shared = false) {
                 const keys = [];
                 const storagePrefix = shared ? `shared_${prefix}` : prefix;
