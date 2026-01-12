@@ -311,7 +311,7 @@
         };
 
         // Storage implementation - GOOGLE SHEETS VERSION
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwmiXuQucxhiQ1Brep6_s8oDiRxBQYm5pRS2WxEGfxyxkzI-uDNkq_awYBgLybeJAgFcQ/exec'; // Paste your deployed URL
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz8fW1fmer24-TZpIDzEDrgsRs0JgYNjyZhOmos2sX625tx72CSqCIjAnN0zkiYy69FDA/exec'; // Paste your deployed URL
         
         window.storage = {
             async get(key, shared = false) {
@@ -424,10 +424,10 @@
                     console.log('Using localStorage fallback for slots:', err);
                 }
                 
-                // Fallback to localStorage - count ALL wedding attendees
+                // Fallback to localStorage - count ONLY guests who have RSVP'd
                 try {
                     const result = await window.storage.list('rsvp:', true);
-                    let slotsUsed = PRE_ALLOCATED_ATTENDEES.length; // Start with pre-allocated (23)
+                    let slotsUsed = 0; // Start at 0
                     
                     if (result && result.keys) {
                         for (const key of result.keys) {
@@ -435,16 +435,39 @@
                             if (data) {
                                 const rsvp = JSON.parse(data.value);
                                 rsvp.guests.forEach(guest => {
-                                    // Count non-pre-allocated guests who chose wedding & reception
-                                    if (guest.attending === true && 
-                                        guest.attendanceType === 'both' && 
-                                        !isPreAllocated(guest.name, rsvp.groupId)) {
+                                    // Count EVERYONE who RSVP'd for wedding & reception
+                                    if (guest.attending === true && guest.attendanceType === 'both') {
                                         slotsUsed++;
                                     }
                                 });
                             }
                         }
                     }
+                    
+                    // Add pre-allocated people who HAVEN'T RSVP'd yet
+                    // (They're guaranteed slots even if they haven't submitted)
+                    const rsvpdPreAllocated = new Set();
+                    if (result && result.keys) {
+                        for (const key of result.keys) {
+                            const data = await window.storage.get(key, true);
+                            if (data) {
+                                const rsvp = JSON.parse(data.value);
+                                rsvp.guests.forEach(guest => {
+                                    if (guest.isPreAllocated || isPreAllocated(guest.name, rsvp.groupId)) {
+                                        rsvpdPreAllocated.add(guest.name);
+                                    }
+                                });
+                            }
+                        }
+                    }
+                    
+                    // Add pre-allocated people who haven't RSVP'd yet
+                    PRE_ALLOCATED_ATTENDEES.forEach(attendee => {
+                        if (!rsvpdPreAllocated.has(attendee.name)) {
+                            slotsUsed++;
+                        }
+                    });
+                    
                     setWeddingSlotsFilled(slotsUsed);
                 } catch (err) {
                     console.error('Error calculating slots:', err);
