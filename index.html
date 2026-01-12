@@ -421,13 +421,34 @@
                         return;
                     }
                 } catch (err) {
-                    console.log('Using localStorage fallback for slots');
+                    console.log('Using localStorage fallback for slots:', err);
                 }
                 
-                // Fallback to original localStorage calculation
-                let count = 20;
-                const keys = await window.storage.list('rsvp:', true);
-                // ... rest of your existing code
+                // Fallback to localStorage - count ALL wedding attendees
+                try {
+                    const result = await window.storage.list('rsvp:', true);
+                    let slotsUsed = PRE_ALLOCATED_ATTENDEES.length; // Start with pre-allocated (23)
+                    
+                    if (result && result.keys) {
+                        for (const key of result.keys) {
+                            const data = await window.storage.get(key, true);
+                            if (data) {
+                                const rsvp = JSON.parse(data.value);
+                                rsvp.guests.forEach(guest => {
+                                    // Count non-pre-allocated guests who chose wedding & reception
+                                    if (guest.attending === true && 
+                                        guest.attendanceType === 'both' && 
+                                        !isPreAllocated(guest.name, rsvp.groupId)) {
+                                        slotsUsed++;
+                                    }
+                                });
+                            }
+                        }
+                    }
+                    setWeddingSlotsFilled(slotsUsed);
+                } catch (err) {
+                    console.error('Error calculating slots:', err);
+                }
             };
 
             const handlePasswordSubmit = async () => {
@@ -567,8 +588,8 @@
                     g => g.attending === true && g.attendanceType === 'both' && !g.isPreAllocated
                 );
                 
-                // Calculate how many non-pre-allocated slots are currently used
-                let nonPreAllocatedSlotsUsed = Math.max(0, weddingSlotsFilled - PRE_ALLOCATED_ATTENDEES.length);
+                // Calculate current slots excluding this group's previous RSVP
+                let currentSlots = weddingSlotsFilled;
                 
                 if (isEditing) {
                     try {
@@ -578,18 +599,17 @@
                             const previousWeddingAttendees = existingData.guests.filter(
                                 g => g.attending === true && g.attendanceType === 'both' && !g.isPreAllocated
                             ).length;
-                            nonPreAllocatedSlotsUsed -= previousWeddingAttendees;
+                            currentSlots -= previousWeddingAttendees;
                         }
                     } catch (err) {
                         // Continue
                     }
                 }
                 
-                // Check if adding these new guests would exceed the 22 available slots
-                const availableForNewGuests = TOTAL_WEDDING_SLOTS - PRE_ALLOCATED_ATTENDEES.length; // 45 - 23 = 22
-                if (nonPreAllocatedSlotsUsed + newWeddingAttendees.length > availableForNewGuests) {
-                    const remaining = availableForNewGuests - nonPreAllocatedSlotsUsed;
-                    setError(`Only ${remaining} wedding ceremony slot(s) remaining for non-reserved guests. Please select "Reception Only" for some guests.`);
+                // Simple check: don't exceed 45 total slots
+                if (currentSlots + newWeddingAttendees.length > TOTAL_WEDDING_SLOTS) {
+                    const available = TOTAL_WEDDING_SLOTS - currentSlots;
+                    setError(`Only ${available} wedding ceremony slot(s) remaining. Please select "Reception Only" for some guests.`);
                     return;
                 }
                 
@@ -620,7 +640,7 @@
                 }
             };
 
-            const availableWeddingSlots = (TOTAL_WEDDING_SLOTS - PRE_ALLOCATED_ATTENDEES.length) - (weddingSlotsFilled - PRE_ALLOCATED_ATTENDEES.length);
+            const availableWeddingSlots = TOTAL_WEDDING_SLOTS - weddingSlotsFilled;
 
             if (submitted) {
                 return (
