@@ -20,15 +20,10 @@
     <script type="text/babel">
         const { useState } = React;
 
-        // ================================
-        // GOOGLE SHEETS API URL
-        // ================================
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz8fW1fmer24-TZpIDzEDrgsRs0JgYNjyZhOmos2sX625tx72CSqCIjAnN0zkiYy69FDA/exec';
-
         // ========================================
         // ADMIN PASSWORD - CHANGE THIS!
         // ========================================
-        const ADMIN_PASSWORD = 'matiqueen2025';
+        const ADMIN_PASSWORD = 'wedding2025';
 
         // ========================================
         // WEDDING SLOT TRACKING
@@ -66,28 +61,61 @@
             );
         };
 
-        // Simple storage implementation (fallback)
+        // ========================================
+        // GOOGLE SHEETS WEB APP URL
+        // ========================================
+        const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzXiRKYGPrfqMCTFAZbf_niVcBvIcMJkPGESvvwhgmyqXiAj1e5Vd-snO7x5uPhLxb5AA/exec';
+
+        // Storage implementation using Google Sheets
         window.storage = {
             async get(key, shared = false) {
-                const storageKey = shared ? `shared_${key}` : key;
-                const data = localStorage.getItem(storageKey);
-                return data ? { key, value: data, shared } : null;
-            },
-            async set(key, value, shared = false) {
-                const storageKey = shared ? `shared_${key}` : key;
-                localStorage.setItem(storageKey, value);
-                return { key, value, shared };
+                try {
+                    const response = await fetch(GOOGLE_SHEETS_URL);
+                    const result = await response.json();
+                    
+                    if (result.success && result.data) {
+                        const groupId = key.replace('rsvp:', '');
+                        const rsvpRows = result.data.filter(row => row['Group ID'] === groupId);
+                        
+                        if (rsvpRows.length > 0) {
+                            const guests = rsvpRows.map(row => ({
+                                name: row['Guest Name'],
+                                attending: row['Attending'] === 'Yes',
+                                attendanceType: row['Event Type'] === 'Wedding & Reception' ? 'both' : 'reception',
+                                isPreAllocated: row['Pre-Allocated'] === 'Yes'
+                            }));
+                            
+                            const rsvpData = {
+                                groupId: groupId,
+                                password: rsvpRows[0]['Password'],
+                                guests: guests,
+                                submittedAt: rsvpRows[0]['Submitted At']
+                            };
+                            
+                            return { key, value: JSON.stringify(rsvpData), shared };
+                        }
+                    }
+                    return null;
+                } catch (error) {
+                    console.error('Error fetching from Google Sheets:', error);
+                    return null;
+                }
             },
             async list(prefix, shared = false) {
-                const keys = [];
-                const storagePrefix = shared ? `shared_${prefix}` : prefix;
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    if (key.startsWith(storagePrefix)) {
-                        keys.push(key);
+                try {
+                    const response = await fetch(GOOGLE_SHEETS_URL);
+                    const result = await response.json();
+                    
+                    if (result.success && result.data) {
+                        const uniqueGroups = [...new Set(result.data.map(row => row['Group ID']))];
+                        const keys = uniqueGroups.map(groupId => `${prefix}${groupId}`);
+                        return { keys, prefix, shared };
                     }
+                    return { keys: [], prefix, shared };
+                } catch (error) {
+                    console.error('Error listing from Google Sheets:', error);
+                    return { keys: [], prefix, shared };
                 }
-                return { keys, prefix, shared };
             }
         };
 
@@ -169,61 +197,6 @@
 
             const loadRSVPs = async () => {
                 setLoading(true);
-                try {
-                    // Try to fetch from Google Sheets first
-                    const response = await fetch(APPS_SCRIPT_URL, {
-                        method: 'GET',
-                        redirect: 'follow'
-                    });
-                    
-                    if (response.ok) {
-                        const rsvpData = await response.json();
-                        
-                        // Handle if response is an error object
-                        if (rsvpData.error) {
-                            throw new Error(rsvpData.error);
-                        }
-                        
-                        setRsvps(rsvpData);
-                        
-                        let attending = 0;
-                        let declined = 0;
-                        let totalGuests = 0;
-                        let weddingAndReception = 0;
-                        let receptionOnly = 0;
-                        
-                        rsvpData.forEach(rsvp => {
-                            rsvp.guests.forEach(guest => {
-                                totalGuests++;
-                                if (guest.attending === true) {
-                                    attending++;
-                                    if (guest.attendanceType === 'both') {
-                                        weddingAndReception++;
-                                    } else if (guest.attendanceType === 'reception') {
-                                        receptionOnly++;
-                                    }
-                                }
-                                if (guest.attending === false) declined++;
-                            });
-                        });
-                        
-                        setStats({
-                            total: totalGuests,
-                            attending,
-                            declined,
-                            weddingAndReception,
-                            receptionOnly,
-                            weddingSlotsUsed: weddingAndReception
-                        });
-                        
-                        setLoading(false);
-                        return;
-                    }
-                } catch (err) {
-                    console.log('Google Sheets unavailable, trying localStorage:', err);
-                }
-                
-                // Fallback to localStorage if Google Sheets fails
                 try {
                     const result = await window.storage.list('rsvp:', true);
                     
