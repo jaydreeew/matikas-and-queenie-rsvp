@@ -43,7 +43,8 @@
             { name: 'Ana Santos', groupId: 'ana-group' },
             { name: 'Mike Schultz', groupId: 'hannah-group' },
             { name: 'Hannah Olib-Schultz', groupId: 'hannah-group' },
-            { name: 'Raul Mendejar', groupId: 'hannah2-group' },
+            { name: 'Marilou Malabanan', groupId: 'marilou-group' },
+            { name: 'Carmencita Salonga', groupId: 'marilou-group' },
             { name: 'Hannah Zamora-Mendejar', groupId: 'hannah2-group' },
             { name: 'Joseph Garibay', groupId: 'joseph-group' },
             { name: 'Jonathan de Belen', groupId: 'jonathan2-group' },
@@ -88,7 +89,7 @@
             '=Z6WVP.M': {
                 groupId: 'marilou-group',
                 primaryGuest: 'Marilou Malabanan',
-                additionalGuests: [],
+                additionalGuests: ['Carmencita Salonga'],
                 maxGuests: 3
             },
             'S6ZP}!-N': {
@@ -280,7 +281,7 @@
             'EQ^M-4Q2': {
                 groupId: 'hannah2-group',
                 primaryGuest: 'Hannah Zamora-Mendejar',
-                additionalGuests: ['Raul Mendejar'],
+                additionalGuests: [],
                 maxGuests: 4
             },
             'GXU6$=8U': {
@@ -408,16 +409,18 @@
             const [submitted, setSubmitted] = useState(false);
             const [loading, setLoading] = useState(false);
             const [isEditing, setIsEditing] = useState(false);
-            const [weddingSlotsFilled, setWeddingSlotsFilled] = useState(20); // Pre-allocated
+            const [weddingSlotsFilled, setWeddingSlotsFilled] = useState(PRE_ALLOCATED_ATTENDEES.length);
+            const [slotsLoading, setSlotsLoading] = useState(true);
 
             useEffect(() => {
                 calculateWeddingSlots();
             }, []);
 
             const calculateWeddingSlots = async () => {
+                setSlotsLoading(true);
                 try {
                     const result = await window.storage.list('rsvp:', true);
-                    let slotsUsed = PRE_ALLOCATED_ATTENDEES.length; // Start with 20
+                    let slotsUsed = PRE_ALLOCATED_ATTENDEES.length;
                     
                     if (result && result.keys) {
                         for (const key of result.keys) {
@@ -437,6 +440,8 @@
                     setWeddingSlotsFilled(slotsUsed);
                 } catch (err) {
                     console.error('Error calculating slots:', err);
+                } finally {
+                    setSlotsLoading(false);
                 }
             };
 
@@ -749,15 +754,21 @@
                                 </div>
                             )}
                             
-                            {/* Wedding Slots Counter */}
-                            <div className="mt-4 px-4 py-3 bg-amber-50 border-2 border-amber-300 rounded-lg inline-block">
-                                <div className="text-sm text-amber-700 font-medium mb-1">Wedding Ceremony Slots</div>
-                                <div className="text-2xl font-bold text-amber-900">
-                                    {availableWeddingSlots} / {TOTAL_WEDDING_SLOTS - PRE_ALLOCATED_ATTENDEES.length}
+                           {/* Wedding Slots Counter */}
+                            {!slotsLoading && (
+                                <div className="mt-4 px-4 py-3 bg-amber-50 border-2 border-amber-300 rounded-lg inline-block">
+                                    <div className="text-sm text-amber-700 font-medium mb-1">Wedding Ceremony Slots</div>
+                                    <div className="text-2xl font-bold text-amber-900">
+                                        {availableWeddingSlots} / {TOTAL_WEDDING_SLOTS - PRE_ALLOCATED_ATTENDEES.length}
+                                    </div>
+                                    <div className="text-xs text-amber-600">Available slots remaining</div>
                                 </div>
-                                <div className="text-xs text-amber-600">Available slots remaining</div>
-                            </div>
-                        </div>
+                            )}
+                            {slotsLoading && (
+                                <div className="mt-4 px-4 py-3 bg-amber-50 border-2 border-amber-300 rounded-lg inline-block">
+                                    <div className="text-sm text-amber-700">Loading ceremony availability...</div>
+                                </div>
+                            )}
 
                         <div>
                             <div className="space-y-6 mb-8">
